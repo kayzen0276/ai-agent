@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Pencatat Pengeluaran</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .card {
+            background-color: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease-in-out;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        .btn-primary {
+            background-color: #4f46e5;
+            color: white;
+            transition: background-color 0.3s;
+        }
+        .btn-primary:hover {
+            background-color: #4338ca;
+        }
+        .btn-danger {
+            background-color: #ef4444;
+            color: white;
+            transition: background-color 0.3s;
+        }
+        .btn-danger:hover {
+            background-color: #dc2626;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .new-item-animation {
+            animation: fadeIn 0.5s ease-out;
+        }
+        /* Chat styles */
+        #chat-fab {
+            transition: transform 0.3s ease;
+        }
+        #chat-fab:hover {
+            transform: scale(1.1);
+        }
+        #chat-window {
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        .chat-bubble {
+            max-width: 80%;
+            padding: 0.75rem 1rem;
+            border-radius: 1rem;
+        }
+        .user-bubble {
+            background-color: #4f46e5;
+            color: white;
+            border-bottom-right-radius: 0.25rem;
+            align-self: flex-end;
+        }
+        .ai-bubble {
+            background-color: #e5e7eb;
+            color: #1f2937;
+            border-bottom-left-radius: 0.25rem;
+            align-self: flex-start;
+        }
+         .loader {
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #4f46e5;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+    <div class="container mx-auto p-4 sm:p-6 lg:p-8 max-w-3xl">
+        <!-- Header -->
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-gray-900">Halo! Saya Agen Keuangan Anda</h1>
+            <p class="text-lg text-gray-600 mt-2">Saya di sini untuk membantu Anda mengingat dan mencatat setiap pengeluaran.</p>
+        </header>
+
+        <main>
+            <!-- Form Input Pengeluaran -->
+            <div class="card p-6 mb-8">
+                <h2 class="text-2xl font-semibold mb-4 text-gray-800">Tambah Pengeluaran Baru</h2>
+                <form id="expense-form" class="space-y-4">
+                    <div>
+                        <label for="expense-name" class="block text-sm font-medium text-gray-700">Nama Barang / Jasa</label>
+                        <input type="text" id="expense-name" placeholder="Contoh: Kopi, Makan Siang, Bensin" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
+                    </div>
+                    <div>
+                        <label for="expense-amount" class="block text-sm font-medium text-gray-700">Jumlah (Rp)</label>
+                        <input type="number" id="expense-amount" placeholder="Contoh: 25000" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required min="0">
+                    </div>
+                    <button type="submit" class="w-full btn-primary font-bold py-2 px-4 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 flex items-center justify-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                        Catat Pengeluaran
+                    </button>
+                </form>
+            </div>
+
+            <!-- Daftar Pengeluaran -->
+            <div class="card p-6">
+                <div class="flex flex-wrap justify-between items-center mb-4 gap-4">
+                    <h2 class="text-2xl font-semibold text-gray-800">Daftar Pengeluaran Anda</h2>
+                    <div class="text-right">
+                        <p class="text-sm text-gray-600">Total Pengeluaran</p>
+                        <p id="total-expenses" class="text-2xl font-bold text-indigo-600">Rp 0</p>
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <label for="search-input" class="sr-only">Cari Pengeluaran</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                        </div>
+                        <input type="text" id="search-input" placeholder="Cari berdasarkan nama..." class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                    </div>
+                </div>
+
+                <div id="expense-list" class="space-y-3">
+                    <!-- Item pengeluaran akan ditambahkan di sini oleh JavaScript -->
+                </div>
+            </div>
+        </main>
+        
+        <footer class="text-center mt-12 text-gray-500 text-sm">
+            <p>Dibuat untuk membantu Anda mengelola keuangan dengan lebih baik.</p>
+        </footer>
+    </div>
+    
+    <!-- Chat Feature -->
+    <div id="chat-feature">
+        <!-- Chat Button -->
+        <button id="chat-fab" class="fixed bottom-6 right-6 bg-indigo-600 text-white p-4 rounded-full shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+        </button>
+
+        <!-- Chat Window -->
+        <div id="chat-window" class="fixed bottom-24 right-6 w-full max-w-sm h-full max-h-[600px] bg-white rounded-lg shadow-2xl flex flex-col transform translate-y-4 opacity-0 pointer-events-none">
+            <div class="flex justify-between items-center p-4 border-b bg-indigo-600 text-white rounded-t-lg">
+                <h3 class="font-bold text-lg">AI Financial Agent</h3>
+                <button id="close-chat" class="focus:outline-none">&times;</button>
+            </div>
+            <div id="chat-messages" class="flex-1 p-4 space-y-4 overflow-y-auto flex flex-col">
+                 <!-- Pesan AI pertama -->
+                <div class="chat-bubble ai-bubble">
+                    Halo! Coba katakan sesuatu seperti "tambahkan kopi 25rb" untuk mencatat pengeluaran baru.
+                </div>
+            </div>
+            <div id="chat-loading" class="p-4 hidden items-center space-x-2">
+                <div class="loader"></div>
+                <p class="text-sm text-gray-500">AI sedang mengetik...</p>
+            </div>
+            <div class="p-4 border-t">
+                <form id="chat-form" class="flex items-center space-x-2">
+                    <input type="text" id="chat-input" placeholder="Ketik pesan Anda..." class="w-full px-3 py-2 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-sm" autocomplete="off">
+                    <button type="submit" class="btn-primary p-2 rounded-md">
+                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        // --- Original Expense Tracker Logic ---
+        const expenseForm = document.getElementById('expense-form');
+        const expenseNameInput = document.getElementById('expense-name');
+        const expenseAmountInput = document.getElementById('expense-amount');
+        const expenseList = document.getElementById('expense-list');
+        const totalExpensesDisplay = document.getElementById('total-expenses');
+        const searchInput = document.getElementById('search-input');
+        let expenses = JSON.parse(localStorage.getItem('expenses')) || [];
+
+        function formatRupiah(amount) {
+            return new Intl.NumberFormat('id-ID', {
+                style: 'currency', currency: 'IDR', minimumFractionDigits: 0
+            }).format(amount);
+        }
+        
+        function renderExpenses(expensesToRender = expenses) {
+            expenseList.innerHTML = '';
+            if (expenses.length === 0) {
+                 expenseList.innerHTML = `<p class="text-gray-500 text-center py-4">Belum ada pengeluaran yang dicatat.</p>`;
+            } else if (expensesToRender.length === 0) {
+                 expenseList.innerHTML = `<p class="text-gray-500 text-center py-4">Tidak ada pengeluaran yang cocok.</p>`;
+            } else {
+                const sortedExpenses = [...expensesToRender].reverse();
+                sortedExpenses.forEach((expense) => {
+                    const originalIndex = expenses.findIndex(e => e.id === expense.id);
+                    const item = document.createElement('div');
+                    item.className = 'flex justify-between items-center bg-gray-50 p-3 rounded-lg border border-gray-200 new-item-animation';
+                    const timestamp = new Date(expense.id).toLocaleString('id-ID', {
+                        day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
+                    });
+                    item.innerHTML = `
+                        <div>
+                            <p class="font-medium text-gray-800">${expense.name}</p>
+                            <p class="text-sm text-gray-500">${timestamp}</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="font-semibold text-gray-900">${formatRupiah(expense.amount)}</p>
+                            <button onclick="deleteExpense(${originalIndex})" class="text-xs text-red-500 hover:text-red-700 font-medium">Hapus</button>
+                        </div>
+                    `;
+                    expenseList.appendChild(item);
+                });
+            }
+            updateTotal();
+        }
+
+        function updateTotal() {
+            const total = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+            totalExpensesDisplay.textContent = formatRupiah(total);
+        }
+        
+        function addExpense(name, amount) {
+            const newExpense = {
+                id: new Date().getTime(), name: name, amount: amount
+            };
+            expenses.push(newExpense);
+            saveExpenses();
+            searchInput.value = '';
+            renderExpenses();
+        }
+
+        window.deleteExpense = function(index) {
+            expenses.splice(index, 1);
+            saveExpenses();
+            const searchTerm = searchInput.value.toLowerCase();
+            const filteredExpenses = expenses.filter(expense => expense.name.toLowerCase().includes(searchTerm));
+            renderExpenses(filteredExpenses);
+        }
+
+        function saveExpenses() {
+            localStorage.setItem('expenses', JSON.stringify(expenses));
+        }
+
+        expenseForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const name = expenseNameInput.value.trim();
+            const amount = parseFloat(expenseAmountInput.value);
+            if (name === '' || isNaN(amount) || amount <= 0) {
+                 // Ganti alert dengan notifikasi yang lebih baik di masa depan
+                return;
+            }
+            addExpense(name, amount);
+            expenseForm.reset();
+            expenseNameInput.focus();
+        });
+
+        searchInput.addEventListener('input', () => {
+            const searchTerm = searchInput.value.toLowerCase();
+            const filteredExpenses = expenses.filter(expense => expense.name.toLowerCase().includes(searchTerm));
+            renderExpenses(filteredExpenses);
+        });
+        
+        renderExpenses();
+
+        // --- New AI Chat Logic ---
+        const chatFab = document.getElementById('chat-fab');
+        const chatWindow = document.getElementById('chat-window');
+        const closeChatBtn = document.getElementById('close-chat');
+        const chatMessages = document.getElementById('chat-messages');
+        const chatForm = document.getElementById('chat-form');
+        const chatInput = document.getElementById('chat-input');
+        const chatLoading = document.getElementById('chat-loading');
+        
+        const API_KEY = ""; // Kunci API akan disediakan secara otomatis
+        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${API_KEY}`;
+        
+        const systemPrompt = `Anda adalah asisten keuangan yang ramah dan efisien untuk aplikasi pencatat pengeluaran. Tujuan utama Anda adalah membantu pengguna menambahkan pengeluaran dengan memahami masukan bahasa alami mereka.
+
+Ketika pengguna ingin menambahkan pengeluaran, Anda HARUS mengidentifikasi nama barang dan jumlahnya.
+
+Anda HARUS SELALU merespons dalam format JSON terstruktur. Objek JSON harus mengikuti skema ini:
+{
+  "type": "OBJECT",
+  "properties": {
+    "action": {
+      "type": "STRING",
+      "description": "Tindakan yang harus dilakukan. Harus 'add_expense' jika pengguna ingin menambahkan pengeluaran, atau 'chat' untuk percakapan umum."
+    },
+    "itemName": {
+      "type": "STRING",
+      "description": "Nama item pengeluaran. Harus null jika tindakan bukan 'add_expense'."
+    },
+    "amount": {
+      "type": "NUMBER",
+      "description": "Jumlah pengeluaran. Harus null jika tindakan bukan 'add_expense'."
+    },
+    "replyText": {
+      "type": "STRING",
+      "description": "Balasan percakapan yang ramah kepada pengguna dalam Bahasa Indonesia. Konfirmasikan tindakan yang diambil atau jawab pertanyaan mereka."
+    }
+  }
+}
+
+Contoh:
+- Pengguna: "tambahin pengeluaran buat kopi 25rb"
+  JSON Anda: { "action": "add_expense", "itemName": "Kopi", "amount": 25000, "replyText": "Oke, pengeluaran untuk Kopi sebesar Rp 25.000 sudah dicatat ya." }
+- Pengguna: "catat makan siang 50000"
+  JSON Anda: { "action": "add_expense", "itemName": "Makan Siang", "amount": 50000, "replyText": "Siap! Makan siang seharga Rp 50.000 berhasil ditambahkan." }
+- Pengguna: "halo"
+  JSON Anda: { "action": "chat", "itemName": null, "amount": null, "replyText": "Halo! Ada yang bisa saya bantu catat hari ini?" }
+
+Selalu bersikap sopan dan membantu. Jika Anda tidak dapat menentukan item dan jumlah, minta klarifikasi dalam replyText Anda dan atur tindakan ke 'chat'.`;
+
+        const generationConfig = {
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: "OBJECT",
+                properties: {
+                    action: { type: "STRING" },
+                    itemName: { type: "STRING" },
+                    amount: { type: "NUMBER" },
+                    replyText: { type: "STRING" },
+                },
+                required: ["action", "replyText"],
+            },
+        };
+
+
+        chatFab.addEventListener('click', () => {
+            chatWindow.classList.toggle('opacity-0');
+            chatWindow.classList.toggle('translate-y-4');
+            chatWindow.classList.toggle('pointer-events-none');
+        });
+
+        closeChatBtn.addEventListener('click', () => {
+            chatWindow.classList.add('opacity-0', 'translate-y-4', 'pointer-events-none');
+        });
+
+        function addChatMessage(message, sender) {
+            const bubble = document.createElement('div');
+            bubble.className = `chat-bubble ${sender === 'user' ? 'user-bubble' : 'ai-bubble'}`;
+            bubble.textContent = message;
+            chatMessages.appendChild(bubble);
+            chatMessages.scrollTop = chatMessages.scrollHeight; // Auto-scroll to bottom
+        }
+
+        chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const userMessage = chatInput.value.trim();
+            if (!userMessage) return;
+
+            addChatMessage(userMessage, 'user');
+            chatInput.value = '';
+            chatLoading.classList.remove('hidden');
+            chatLoading.classList.add('flex');
+
+            try {
+                const response = await callGeminiApi(userMessage);
+                processAiResponse(response);
+            } catch (error) {
+                console.error("Error calling Gemini API:", error);
+                addChatMessage("Maaf, terjadi kesalahan saat menghubungi AI. Coba lagi nanti.", 'ai');
+            } finally {
+                chatLoading.classList.add('hidden');
+                chatLoading.classList.remove('flex');
+            }
+        });
+
+        async function callGeminiApi(userMessage) {
+             const payload = {
+                contents: [{ parts: [{ text: userMessage }] }],
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+                generationConfig: generationConfig
+            };
+
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                throw new Error(`API request failed with status ${response.status}`);
+            }
+
+            const result = await response.json();
+            const jsonText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (!jsonText) {
+                 throw new Error("Invalid response structure from API");
+            }
+            return JSON.parse(jsonText);
+        }
+
+        function processAiResponse(response) {
+            if (response.replyText) {
+                addChatMessage(response.replyText, 'ai');
+            }
+
+            if (response.action === 'add_expense' && response.itemName && response.amount > 0) {
+                addExpense(response.itemName, response.amount);
+            }
+        }
+    </script>
+</body>
+</html>
